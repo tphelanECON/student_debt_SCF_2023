@@ -8,7 +8,7 @@ Documentation links for most recent wave (2022 wave, released in October 2023):
     * Summary macros: https://www.federalreserve.gov/econres/files/bulletin.macro.txt
     * Codebook for 2022: https://www.federalreserve.gov/econres/files/codebk2022.txt
 
-To search the codbook, note that the analysis of education loans begins with X7801.
+To search codebook note that analysis of education loans begins with X7801.
 
 In this script, the "Report" refers to the above file. The full reference is
 
@@ -236,7 +236,7 @@ years = [yr for yr in possible_years if (yr >= start_dt.year and yr <= end_dt.ye
 """
 years = [2019,2022]
 scf_full, scf_full_real, scf_sum, scf = {}, {}, {}, {}
-scf_debtors, scf_nondebtors, scf_young = {}, {}, {}
+scf_debtors, scf_private_debtors, scf_nondebtors, scf_young = {}, {}, {}, {}
 """
 Age distribution (Boundaries: 30-year-old is in group 0.)
 """
@@ -287,9 +287,10 @@ name_dict[LTW_str_high] = 'Lifetime wealth ($r$={0}$\%$)'.format(int(100*rf_high
 Debt categories and table labels/names #'Bachelor degree (\%)
 """
 
-summary_rows = ['Median income (\$000s)', 'Mean income (\$000s)', 'Median networth (\$000s)', \
-'Mean networth (\$000s)', 'Median age', 'Mean age']
-summary_cols = ['Whole population', 'Debtors', 'Non-debtors']
+#summary_rows = ['Median income (\$000s)', 'Mean income (\$000s)', 'Median networth (\$000s)', \
+#'Mean networth (\$000s)', 'Median age', 'Mean age']
+summary_rows = ['Median income', 'Mean income', 'Median networth', 'Mean networth']
+summary_cols = ['Whole population', 'Debtors', 'Private Debtors']
 
 """
 Lifetime wealth calculations. Two METHODS that take dataframe as input:
@@ -456,6 +457,7 @@ for yr in years:
     print("{0} wave".format(yr))
     scf[yr] = pd.read_csv('../data/scf{0}.csv'.format(yr))
     scf_debtors[yr] = scf[yr][scf[yr]['student_debt']>0]
+    scf_private_debtors[yr] = scf[yr][scf[yr]['student_debt_private_current']>0]
     scf_nondebtors[yr] = scf[yr][scf[yr]['student_debt']<=0]
     scf_young[yr] = scf[yr][scf[yr]['age_cat'].isin(young_cat)]
 toc = time.time()
@@ -470,10 +472,10 @@ for yr in years:
     print("Year:", yr)
     print("Mean wageinc in summary and full dataset:")
     print(weight_mean(scf[yr]['wageinc'],scf[yr]['wgt']))
-    print(weight_mean(scf_full[yr]['wageinc_full_current'],scf_full[yr]['x42001']/5))
+    print(weight_mean(scf[yr]['wageinc_full_current'],scf[yr]['x42001']/5))
     print("Mean student debt in summary and full dataset:")
     print(weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
-    print(weight_mean(scf_full[yr]['student_debt_full_current'],scf_full[yr]['x42001']/5))
+    print(weight_mean(scf[yr]['student_debt_full_current'],scf[yr]['x42001']/5))
 """
 
 for yr in [2019,2022]:
