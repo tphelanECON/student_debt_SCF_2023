@@ -54,11 +54,6 @@ summary_cols = data_clean.summary_cols
 
 debt_list = data_clean.debt_list
 debt_brackets = data_clean.debt_brackets
-
-g = data_clean.g
-rf = data_clean.rf
-rf_high = data_clean.rf_high
-end_date = data_clean.end_date
 num = data_clean.num
 
 """
@@ -253,6 +248,8 @@ for debt_var in debt_var_list:
             plt.show()
         plt.close()
 
+print("2019 vs 2022 incidence figures done")
+
 """
 Measure of inequality: ratio of conditional mean to median student debt. Only
 for total student debt because median PRIVATE student debt among borrowers often zero.
@@ -293,4 +290,69 @@ for debt_var in ['student_debt']:
             plt.show()
         plt.close()
 
-print("2019 vs 2022 incidence figures done")
+print("2019 vs 2022 inequality figures done")
+
+"""
+Now want to breakdown by private versus public, no pay versus pay, etc.
+"""
+
+for yr in [2019]:
+    print("Year = {0}:".format(yr))
+    print("All student debt")
+    frac_nopay = weight_mean(scf[yr]['student_debt_nopay_current'],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_LL_current'],scf[yr]['wgt'])
+    print("Fraction not being paid:",frac_nopay)
+    for reason in ['forbear','noafford','grace']:
+        frac = weight_mean(scf[yr]['student_debt_{0}_current'.format(reason)],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_LL_current'],scf[yr]['wgt'])
+        print("   Fraction due to {0}:".format(reason),frac)
+
+    print("Federal student debt:")
+    frac_nopay_fed = weight_mean(scf[yr]['student_debt_nopay_fed_current'],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_fed_current'],scf[yr]['wgt'])
+    print("Fraction not being paid:",frac_nopay_fed)
+    for reason in ['forbear','noafford','grace']:
+        frac = weight_mean(scf[yr]['student_debt_{0}_fed_current'.format(reason)],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_fed_current'],scf[yr]['wgt'])
+        print("   Fraction due to {0}:".format(reason),frac)
+
+    print("Private student debt:")
+    frac_nopay_private = weight_mean(scf[yr]['student_debt_nopay_private_current'],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_private_current'],scf[yr]['wgt'])
+    print("Fraction not being paid:",frac_nopay_private)
+    for reason in ['forbear','noafford','grace']:
+        frac = weight_mean(scf[yr]['student_debt_{0}_private_current'.format(reason)],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_private_current'],scf[yr]['wgt'])
+        print("   Fraction due to {0}:".format(reason),frac)
+
+"""
+Now want a table summarizing differences between public and private.
+
+Why? Want to know if there were different patterns of payment.
+
+Aggregate amounts not being paid
+"""
+
+for yr in [2019,2022]:
+    df = pd.DataFrame(data=0,index=['Total','Federal','Private'],columns=['Total','Forbearance','Cannot afford','Grace period'])
+    frac_nopay = weight_mean(scf[yr]['student_debt_nopay_current'],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_LL_current'],scf[yr]['wgt'])
+    df.iloc[0,0], i = frac_nopay, 1
+
+    for reason in ['forbear','noafford','grace']:
+        frac = weight_mean(scf[yr]['student_debt_{0}_current'.format(reason)],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_LL_current'],scf[yr]['wgt'])
+        df.iloc[0,i], i = frac, i+1
+
+    frac_nopay_fed = weight_mean(scf[yr]['student_debt_nopay_fed_current'],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_fed_current'],scf[yr]['wgt'])
+    df.iloc[1,0], i = frac_nopay_fed, 1
+
+    for reason in ['forbear','noafford','grace']:
+        frac = weight_mean(scf[yr]['student_debt_{0}_fed_current'.format(reason)],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_fed_current'],scf[yr]['wgt'])
+        df.iloc[1,i], i = frac, i+1
+
+    frac_nopay_private = weight_mean(scf[yr]['student_debt_nopay_private_current'],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_private_current'],scf[yr]['wgt'])
+    df.iloc[2,0], i = frac_nopay_private, 1
+
+    for reason in ['forbear','noafford','grace']:
+        frac = weight_mean(scf[yr]['student_debt_{0}_private_current'.format(reason)],scf[yr]['wgt'])/weight_mean(scf[yr]['student_debt_private_current'],scf[yr]['wgt'])
+        df.iloc[2,i], i = frac, i+1
+
+    destin = '../main/figures/sd_LL_{0}.tex'.format(yr)
+    df_table = df.round(decimals=3)
+    with open(destin,'w') as tf:
+        #tf.write(df.to_latex(escape=False,column_format='lcccc'))
+        df_table_s=df_table.style.format(precision=3)
+        tf.write(df_table_s.to_latex(column_format='lcccc'))

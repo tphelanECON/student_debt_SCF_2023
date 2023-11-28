@@ -47,6 +47,11 @@ Reminders/caveats/concerns:
     * universal cancellation effects here too? Not sure.
     * perhaps place methods elsewhere eventually. they clutter and do not require
     reference to data.
+
+Note that in the public dataset, the PSLF is combined with the forbearance
+category.
+
+
 """
 import numpy as np
 import pandas as pd
@@ -73,10 +78,8 @@ from warnings import simplefilter
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 """
-Questions and variables taken from the full public dataset. Recall that the SCF
-only solicits loan-level information for the first six loans.
-
-I will number these questions for clarity.
+Questions and variables taken from the full public dataset. Recall that SCF
+only solicits loan-level info for the first six loans.
 """
 
 #Q1. How much is still owed on this loan? (x7179 represents "all other loans")
@@ -104,18 +107,18 @@ whynopay_list = ['x9300', 'x9301', 'x9302', 'x9303', 'x9304', 'x9305']
 #Q6. Is the amount owed on this loan being completely forgiven or partially forgiven?
 #Key: 1. *COMPLETELY FORGIVEN; 2. *PARTIALLY FORGIVEN; -7  OTHER; 0. Inap.
 forgive_list = ['x7421', 'x7423', 'x7425', 'x7427', 'x7429', 'x7431']
+#Q7. What is the annual rate of interest charged on this loan?
+#Key. PERCENT * 100. -1. Nothing. 0. Inap.
+#interest_list = ['x7822', 'x7845', 'x7868', 'x7922', 'x7945', 'x7968']
 
 """
-For all of the following I don't think that it makes sense to talk about the
-number of loans falling into a particular category, rather than the dollar value
-of all such loans. Ok that is the convention.
+For following it does not seem meaningfu to talk about number of loans falling
+into particular category. Instead we record dollar value of all such loans.
 
 Now think: what else to depict? Ideas:
     * value of all loans not currently in repayment.
     * value of all loans in an IDR. Typical income/wealth of debtors in an IDR.
     * value of all loans that respondents expect to never repay. Reasons why.
-
-Think slowly.
 """
 
 """
@@ -246,20 +249,6 @@ age_values = [25,30,35,40,45,50,55,60,65,70]
 age_values_bulletin = [0,34,44,54,64,74,1000]
 young_cat = [0,1]
 part_dict = ['age', 'edcl', 'racecl4']
-"""
-Benchmark parameters (no aggregate growth, risk-free rate of 4%, following CBO,
-and end date equal to 80 years).
-"""
-
-g = 0
-rf = 0.04
-rf_high = 0.12
-end_date = 80
-num = 5
-
-LTW_str = 'LT_wealth{0}{1}'.format(int(100*g),int(100*rf))
-LTW_str_high = 'LT_wealth{0}{1}'.format(int(100*g),int(100*rf_high))
-LW_names = ['networth', 'inc_networth', LTW_str, LTW_str_high]
 
 """
 Naming dictionary for figures. Only need ONE dictionary for whole analysis.
@@ -280,77 +269,14 @@ name_dict['age'] = 'Age'
 name_dict['edcl'] = 'Education'
 name_dict['racecl4'] = 'Race'
 name_dict['inc_networth'] = 'Income plus net worth'
-name_dict[LTW_str] = 'Lifetime wealth ($r$={0}$\%$)'.format(int(100*rf))
-name_dict[LTW_str_high] = 'Lifetime wealth ($r$={0}$\%$)'.format(int(100*rf_high))
 
 """
-Debt categories and table labels/names #'Bachelor degree (\%)
+Debt categories and table labels/names
 """
 
-#summary_rows = ['Median income (\$000s)', 'Mean income (\$000s)', 'Median networth (\$000s)', \
-#'Mean networth (\$000s)', 'Median age', 'Mean age']
 summary_rows = ['Median income', 'Mean income', 'Median networth', 'Mean networth']
 summary_cols = ['Whole population', 'Debtors', 'Private Debtors']
 
-"""
-Lifetime wealth calculations. Two METHODS that take dataframe as input:
-
-    * lifetime_wealth(df,g,rf,end_date): takes dataframe df and scalars g, rf,
-    end_date for growth, interest rate and end date of one's life, respectively.
-    This will return two series: lifetime wealth and percapita lifetime wealth.
-"""
-def lifetime_wealth(df_arg,g,rf,end_date):
-    df = df_arg.copy()
-    #create series for current income, per-capita income and discounted income.
-    df['income0'] = df['income']
-    df['income0disc'] = df['income']
-    df['percap_income0'] = df['percap_income']
-    df['percap_income0disc'] = df['percap_income']
-    """
-    create median incomes for each age group, growth rates for income (append
-    zero growth in retirement), and dictionary mapping ages to growth rates:
-    """
-    I_med = df.groupby(df['age_cat'])['income'].agg(lambda x: quantile(x,df.loc[x.index,"wgt"],0.5)).values
-    I_med_percap = df.groupby(df['age_cat'])['percap_income'].agg(lambda x: quantile(x,df.loc[x.index,"wgt"],0.5)).values
-    grow = np.append(np.log(I_med[1:]/I_med[:-1])/5 + g, g)
-    grow_percap = np.append(np.log(I_med_percap[1:]/I_med_percap[:-1])/5 + g, g)
-    grow_dict = dict(zip(range(len(age_labels)), list(grow)))
-    grow_percap_dict = dict(zip(range(len(age_labels)), list(grow_percap)))
-    #construct future income and per-capita income and discount:
-    for t in range(end_date-1):
-        #get growth between t and t+1 by applying grow_dict to age categorical.
-        gr = pd.cut(df['age']+t,bins=age_values,labels=range(len(age_values)-1)).map(grow_dict)
-        gr_percap = pd.cut(df['age']+t,bins=age_values,labels=range(len(age_values)-1)).map(grow_percap_dict)
-        #compute next year income and discounted income if alive.
-        df['income{0}'.format(t+1)] = (df['age']+t+1<=end_date)*df['income{0}'.format(t)]*np.exp(gr.astype(float))
-        df['income{0}disc'.format(t+1)] = np.exp(-rf*(t+1))*df['income{0}'.format(t+1)]
-        df['percap_income{0}'.format(t+1)] = (df['age']+t+1<=end_date)*df['percap_income{0}'.format(t)]*np.exp(gr_percap.astype(float))
-        df['percap_income{0}disc'.format(t+1)] = np.exp(-rf*(t+1))*df['percap_income{0}'.format(t+1)]
-    df['percap_LT_income'] = df[['percap_income{0}disc'.format(t) for t in range(end_date)]].sum(axis=1)
-    df['LT_income'] = df[['income{0}disc'.format(t) for t in range(end_date)]].sum(axis=1)
-    return df['LT_income'] + df['networth'], df['percap_LT_income'] + df['percap_networth']
-"""
-Create qctiles for lifetime wealth. Takes dataframe, adds series
-using above lifetime_wealth function and computes categorical variables.
-"""
-def lifetime_wealth_qctiles(df,g,rf,end_date,num):
-    LTW_str = 'LT_wealth{0}{1}'.format(int(100*g),int(100*rf))
-    df[LTW_str] = lifetime_wealth(df,g,rf,end_date)[0]
-    df['percap_'+LTW_str] = lifetime_wealth(df,g,rf,end_date)[1]
-    for num in [5,10]:
-        #whole population (LT_wealth and percap)
-        qctiles = np.array([quantile(df[LTW_str], df['wgt'], j/num) for j in range(num+1)])
-        df[LTW_str+'_cat{0}'.format(num)] = cut(df,LTW_str,qctiles)
-        qctiles = np.array([quantile(df['percap_'+LTW_str], df['wgt'], j/num) for j in range(num+1)])
-        df['percap_'+LTW_str+'_cat{0}'.format(num)] = cut(df,'percap_'+LTW_str,qctiles)
-        #now each age group
-        for age_cat in range(len(age_labels)):
-            df_temp = df[df['age_cat']==age_cat]
-            qctiles = np.array([quantile(df_temp[LTW_str], df_temp['wgt'], j/num) for j in range(num+1)])
-            df[LTW_str+'_cat{0}{1}'.format(num,age_cat)] = cut(df_temp,LTW_str,qctiles)
-            qctiles = np.array([quantile(df_temp['percap_'+LTW_str], df_temp['wgt'], j/num) for j in range(num+1)])
-            df['percap_'+LTW_str+'_cat{0}{1}'.format(num,age_cat)] = cut(df_temp,'percap_'+LTW_str,qctiles)
-    return df
 """
 Fetch data from Board's website if not on file and create variables used in analysis.
 """
@@ -383,19 +309,38 @@ for yr in years:
         """
         scf_full[yr]['student_debt_full'] = scf_full[yr][[bal_list[i] for i in range(7)]].sum(axis=1)
         scf_full[yr]['student_debt_full_current'] = scf_full[yr]['student_debt_full']*asset_adj[yr]
-        scf_full[yr]['wageinc_full'] = np.maximum(scf_full[yr]['x5702'],0)
-        scf_full[yr]['wageinc_full_current'] = scf_full[yr]['wageinc_full']*income_adj[yr]
         """
-        IDR and federal loans
+        Loan-level constructions (IDR, federal vs private loans, forbearance, etc).
+
+        Remember PSLF is combined with forbearance category.
         """
         for i in range(6):
-            scf_full[yr]['IDR_ind{0}'.format(i)] = (scf_full[yr][IDR_list[i]]==1).astype(int)
             scf_full[yr]['fed_bal{0}'.format(i)] = (scf_full[yr][federal_list[i]]==1)*scf_full[yr][bal_list[i]]
+            scf_full[yr]['private_bal{0}'.format(i)] = (scf_full[yr][federal_list[i]]==5)*scf_full[yr][bal_list[i]]
+            scf_full[yr]['nopay_bal{0}'.format(i)] = (scf_full[yr][paynow_list[i]]==5)*scf_full[yr][bal_list[i]]
+            scf_full[yr]['forbear_bal{0}'.format(i)] = (scf_full[yr][whynopay_list[i]]==1)*scf_full[yr][bal_list[i]]
+            scf_full[yr]['noafford_bal{0}'.format(i)] = (scf_full[yr][whynopay_list[i]]==3)*scf_full[yr][bal_list[i]]
+            scf_full[yr]['grace_bal{0}'.format(i)] = (scf_full[yr][whynopay_list[i]]==4)*scf_full[yr][bal_list[i]]
+            for s in ['nopay','forbear','noafford','grace']:
+                scf_full[yr][s+'_bal{0}'.format(i)+'_fed'] = (scf_full[yr][federal_list[i]]==1)*scf_full[yr][s+'_bal{0}'.format(i)]
+                scf_full[yr][s+'_bal{0}'.format(i)+'_private'] = (scf_full[yr][federal_list[i]]==5)*scf_full[yr][s+'_bal{0}'.format(i)]
+        for s in ['nopay','forbear','noafford','grace']:
+            scf_full[yr]['student_debt_'+s] = scf_full[yr][[s+'_bal{0}'.format(i) for i in range(6)]].sum(axis=1)
+            scf_full[yr]['student_debt_'+s+'_current'] = scf_full[yr]['student_debt_'+s]*asset_adj[yr]
+            scf_full[yr]['student_debt_'+s+'_fed'] = scf_full[yr][[s+'_bal{0}'.format(i)+'_fed' for i in range(6)]].sum(axis=1)
+            scf_full[yr]['student_debt_'+s+'_private'] = scf_full[yr][[s+'_bal{0}'.format(i)+'_private' for i in range(6)]].sum(axis=1)
+            scf_full[yr]['student_debt_'+s+'_fed_current'] = scf_full[yr]['student_debt_'+s+'_fed']*asset_adj[yr]
+            scf_full[yr]['student_debt_'+s+'_private_current'] = scf_full[yr]['student_debt_'+s+'_private']*asset_adj[yr]
+        scf_full[yr]['student_debt_fed'] = scf_full[yr][['fed_bal{0}'.format(i) for i in range(6)]].sum(axis=1)
+        scf_full[yr]['student_debt_private'] = scf_full[yr][['private_bal{0}'.format(i) for i in range(6)]].sum(axis=1)
+        scf_full[yr]['student_debt_fed_current'] = scf_full[yr]['student_debt_fed']*asset_adj[yr]
+        scf_full[yr]['student_debt_private_current'] = scf_full[yr]['student_debt_private']*asset_adj[yr]
+        scf_full[yr]['student_debt_LL_current'] = scf_full[yr]['student_debt_fed_current'] + scf_full[yr]['student_debt_private_current']
+        #now want dollar value of loans in repayment.
+        for i in range(6):
+            scf_full[yr]['IDR_ind{0}'.format(i)] = (scf_full[yr][IDR_list[i]]==1).astype(int)
         scf_full[yr]['IDR_count'] = scf_full[yr][['IDR_ind{0}'.format(i) for i in range(6)]].sum(axis=1)
         scf_full[yr]['IDR'] = scf_full[yr]['IDR_count']>0
-        scf_full[yr]['student_debt_fed'] = scf_full[yr][['fed_bal{0}'.format(i) for i in range(6)]].sum(axis=1)
-        scf_full[yr]['student_debt_fed_current'] = scf_full[yr]['student_debt_fed']*asset_adj[yr]
-        scf_full[yr]['student_debt_private_current'] = scf_full[yr]['student_debt_full_current'] - scf_full[yr]['student_debt_fed_current']
         """
         Now merge
         """
@@ -428,19 +373,6 @@ for yr in years:
                 qctiles = np.array([quantile(scf[yr]['percap_'+var], scf[yr]['wgt'], j/num) for j in range(num+1)])
                 scf[yr]['percap_'+var+'_cat{0}'.format(num)] = pd.cut(scf[yr]['percap_'+var], bins=qctiles, labels=range(len(qctiles)-1), include_lowest=True)
         """
-        Create lifetime wealth measures
-        """
-        print("Adding lifetime wealth for year = {0}".format(yr))
-        print("CBO interest rate ({0} percent)".format(100*rf))
-        scf[yr] = lifetime_wealth_qctiles(scf[yr],g,rf,end_date,num)
-        print("High interest rate ({0} percent)".format(100*rf_high))
-        scf[yr] = lifetime_wealth_qctiles(scf[yr],g,rf_high,end_date,num)
-        """
-        Effect of universal cancellation on inequality in various variables.
-        """
-        for s in ['networth', 'inc_networth', LTW_str]:
-            scf[yr][s+'_cancel'] = scf[yr][s] + scf[yr]['student_debt']
-        """
         Save and delete unnecessary files
         """
         print("Now saving wave {0} as .csv and deleting unnecessary STATA files.".format(yr))
@@ -467,15 +399,14 @@ print("Time taken:", toc-tic)
 Check that we have the correct inflation adjustment
 """
 
-"""
-for yr in years:
+for yr in [2019,2022]:
     print("Year:", yr)
-    print("Mean wageinc in summary and full dataset:")
-    print(weight_mean(scf[yr]['wageinc'],scf[yr]['wgt']))
-    print(weight_mean(scf[yr]['wageinc_full_current'],scf[yr]['x42001']/5))
     print("Mean student debt in summary and full dataset:")
     print(weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
     print(weight_mean(scf[yr]['student_debt_full_current'],scf[yr]['x42001']/5))
+
+"""
+Compute number of people in IDR
 """
 
 for yr in [2019,2022]:
@@ -487,3 +418,36 @@ for yr in [2019,2022]:
     tot_SD2 = weight_agg(scf[yr]['student_debt'],scf[yr]['wgt'])
     fed_SD = weight_agg(scf[yr]['student_debt_fed_current'],scf[yr]['x42001']/5)
     print(fed_SD/tot_SD)
+
+"""
+Some statistics on quantitative significance of "all other loans."
+TP: I check this because we cannot ascertain loan-level information for these
+loans. Thankfully, they are very small in the aggregate.
+"""
+
+print("Average amount of loans beyond first six:")
+for yr in [2019,2022]:
+    print("Year = {0}:".format(yr))
+    print(weight_mean(scf[yr]['x7179'],scf[yr]['wgt']))
+    print("Average loans")
+    print(weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
+
+print("Now among borrowers:")
+for yr in [2019,2022]:
+    print("Year = {0}:".format(yr))
+    print(weight_mean(scf_debtors[yr]['x7179'],scf_debtors[yr]['wgt']))
+    print("Average loans")
+    print(weight_mean(scf_debtors[yr]['student_debt'],scf_debtors[yr]['wgt']))
+
+"""
+Averages check
+"""
+
+print("Average debt loan-level versus total:")
+for yr in [2019,2022]:
+    scf[yr]['student_debt_LL_check'] = scf[yr]['student_debt_LL_current'] + scf[yr]['x7179']
+    print("Year = {0}:".format(yr))
+    print("Loan-level:",weight_mean(scf[yr]['student_debt_LL_current'],scf[yr]['wgt']))
+    print("Loan-level plus misc:",weight_mean(scf[yr]['student_debt_LL_check'],scf[yr]['wgt']))
+    print("Full dataset:",weight_mean(scf[yr]['student_debt_full_current'],scf[yr]['wgt']))
+    print("Summary dataset:",weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
