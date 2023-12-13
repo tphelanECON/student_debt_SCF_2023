@@ -1,12 +1,12 @@
 """
-What to include here? As of November 27 2023:
-    * Print some summary statistics and make the tables.
+This script does the following:
+    * Print summary statistics and make tables.
     * Average student debt by quintiles, broken down by:
         * wave of SCF (2019 or 2022).
         * whole population and population of debtors.
         * income and net worth quintiles.
-        * public and private loan.
-        * mean and median.
+        * public vs private loans, fraction not in repayment, reason for lack
+        of repayment.
     * Incidence of debt by quintiles of income and net worth.
     * Measure of inequality. For income and net worth we record ratio of conditional
     mean to median student debt. We only do this for total student debt because
@@ -102,7 +102,14 @@ Average student debt by quintiles, broken down by:
     * mean and median.
 """
 
+"""
+Now some fontsize decisions
+"""
+
 show=0
+xlabelfontsize=14
+ylabelfontsize=14
+titlefontsize=14
 num=5
 
 debt_var_list = ['student_debt','student_debt_private_current']
@@ -134,14 +141,14 @@ for debt_var in debt_var_list:
                     else:
                         ax.bar(i+1-width,SD_quintiles.loc['borrowers',i+1],2*width,color=colorFader(c1,c2,0))
                         ax.bar(i+1+width,SD_quintiles.loc['all',i+1],2*width,color=colorFader(c1,c2,1))
-                ax.set_xlabel('{0} quintiles'.format(name_dict[var]))
                 if debt_var == 'student_debt':
-                    ax.set_title('Average student debt by quintile ({0})'.format(yr))
+                    ax.set_title('Average student debt by quintile ({0})'.format(yr), fontsize=titlefontsize)
                     plt.ylim([0,80])
                 else:
-                    ax.set_title('Average private student debt by quintile ({0})'.format(yr))
+                    ax.set_title('Average private student debt by quintile ({0})'.format(yr), fontsize=titlefontsize)
                     plt.ylim([0,20])
-                ax.set_ylabel('\$000s')
+                ax.set_xlabel('{0} quintiles'.format(name_dict[var]), fontsize=xlabelfontsize)
+                ax.set_ylabel('\$000s', fontsize=ylabelfontsize)
                 ax.legend()
                 destin = '../main/figures/SD_{0}_{1}_quintiles_{2}_{3}.png'.format(measure,var,yr,debt_var)
                 plt.savefig(destin, format='png', dpi=1000)
@@ -184,18 +191,18 @@ for debt_var in debt_var_list:
                         ax.bar(i+1-width,SD_quintiles.loc[2019,i+1],2*width,color=colorFader(c1,c2,0))
                         ax.bar(i+1+width,SD_quintiles.loc[2022,i+1],2*width,color=colorFader(c1,c2,1))
                 plt.legend()
-                ax.set_xlabel('{0} quintile'.format(name_dict[var]))
-                ax.set_ylabel('\$000s')
+                ax.set_xlabel('{0} quintile'.format(name_dict[var]), fontsize=xlabelfontsize)
+                ax.set_ylabel('\$000s', fontsize=ylabelfontsize)
                 if debt_var == 'student_debt':
                     if var2 == 'all':
-                        ax.set_title('Average student debt')
+                        ax.set_title('Average student debt', fontsize=titlefontsize)
                     else:
-                        ax.set_title('Average student debt among borrowers')
+                        ax.set_title('Average student debt among borrowers', fontsize=titlefontsize)
                 else:
                     if var2 == 'all':
-                        ax.set_title('Average private student debt')
+                        ax.set_title('Average private student debt', fontsize=titlefontsize)
                     else:
-                        ax.set_title('Average private student debt among borrowers')
+                        ax.set_title('Average private student debt among borrowers', fontsize=titlefontsize)
                 destin = '../main/figures/{0}_debt_ave_{1}_{2}.png'.format(var,debt_var,var2)
                 plt.savefig(destin, format='png', dpi=1000)
                 if show == 1:
@@ -233,15 +240,15 @@ for debt_var in debt_var_list:
                 ax.bar(i+1-width,SD_quintiles_pct.loc[2019,i+1],2*width,color=colorFader(c1,c2,0))
                 ax.bar(i+1+width,SD_quintiles_pct.loc[2022,i+1],2*width,color=colorFader(c1,c2,1))
         plt.legend()
-        ax.set_xlabel('{0} quintile'.format(name_dict[var]))
-        ax.set_ylabel('Percent (%)')
+        ax.set_xlabel('{0} quintile'.format(name_dict[var]),fontsize=xlabelfontsize)
+        ax.set_ylabel('Percent (%)',fontsize=ylabelfontsize)
         if debt_var == 'student_debt':
-            ax.set_title('Percentage with student debt')
+            ax.set_title('Percentage with student debt',fontsize=titlefontsize)
             ax.set_ylim([0, 50])
         elif debt_var == 'student_debt_fed_current':
-            ax.set_title('Percentage with federal student debt')
+            ax.set_title('Percentage with federal student debt',fontsize=titlefontsize)
         else:
-            ax.set_title('Percentage with private student debt')
+            ax.set_title('Percentage with private student debt',fontsize=titlefontsize)
         destin = '../main/figures/{0}_debt_inc_{1}.png'.format(var,debt_var)
         plt.savefig(destin, format='png', dpi=1000)
         if show == 1:
@@ -280,10 +287,10 @@ for debt_var in ['student_debt']:
                 ax.bar(i+1-width,SD_quintiles_rat.loc[2019,i+1],2*width,color=colorFader(c1,c2,0))
                 ax.bar(i+1+width,SD_quintiles_rat.loc[2022,i+1],2*width,color=colorFader(c1,c2,1))
         plt.legend()
-        ax.set_xlabel('{0} quintile'.format(name_dict[var]))
-        ax.set_ylabel('Ratio')
+        ax.set_xlabel('{0} quintile'.format(name_dict[var]), fontsize=xlabelfontsize)
+        ax.set_ylabel('Ratio', fontsize=ylabelfontsize)
         ax.set_ylim([0, 2.2])
-        ax.set_title('Ratio of mean-to-median student debt')
+        ax.set_title('Ratio of mean-to-median student debt', fontsize=titlefontsize)
         destin = '../main/figures/{0}_MM_rat_{1}.png'.format(var,debt_var)
         plt.savefig(destin, format='png', dpi=1000)
         if show == 1:
@@ -320,11 +327,7 @@ for yr in [2019]:
         print("   Fraction due to {0}:".format(reason),frac)
 
 """
-Now want a table summarizing differences between public and private.
-
-Why? Want to know if there were different patterns of payment.
-
-Aggregate amounts not being paid
+Table summarizing differences between public and private.
 """
 
 for yr in [2019,2022]:
@@ -356,3 +359,17 @@ for yr in [2019,2022]:
         #tf.write(df.to_latex(escape=False,column_format='lcccc'))
         df_table_s=df_table.style.format(precision=3)
         tf.write(df_table_s.to_latex(column_format='lcccc'))
+
+"""
+Aggregate federal and private student loans
+"""
+
+for yr in [2019,2022]:
+    print("Year = {0}".format(yr))
+    p = scf[yr]['student_debt_private_current']
+    f = scf[yr]['student_debt_fed_current']
+    print("Private:", weight_agg(p, scf[yr]['wgt'])/10**12, "trillion")
+    print("Federal:", weight_agg(f, scf[yr]['wgt'])/10**12, "trillion")
+    print("Total (loan-level):", weight_agg(p+f, scf[yr]['wgt'])/10**12, "trillion")
+    print("Fraction that is federal:", weight_agg(f, scf[yr]['wgt'])/weight_agg(p+f, scf[yr]['wgt']))
+    print("Total (summary):", weight_agg(scf[yr]['student_debt'],scf[yr]['wgt'])/10**12, "trillion")

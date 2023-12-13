@@ -1,15 +1,14 @@
 """
-This script downloads various waves of the SCF and generates variables used in
-the analysis if such files do not already exist in memory.
+This script downloads the 2019 and 2022 waves of the SCF and generates variables
+used in the analysis if such files do not already exist in memory.
 
 Documentation links for most recent wave (2022 wave, released in October 2023):
 
-    * Report (previously referred to the Bulletin): https://www.federalreserve.gov/publications/files/scf23.pdf
+    * Official report (previously referred to the Bulletin): https://www.federalreserve.gov/publications/files/scf23.pdf
     * Summary macros: https://www.federalreserve.gov/econres/files/bulletin.macro.txt
     * Codebook for 2022: https://www.federalreserve.gov/econres/files/codebk2022.txt
 
 To search codebook note that analysis of education loans begins with X7801.
-
 In this script, the "Report" refers to the above file. The full reference is
 
 Aditya Aladangady, Jesse Bricker, Andrew C. Chang, Serena Goodman, Jacob Krim-
@@ -19,8 +18,7 @@ Finances. 2023.
 
 With each new wave of the SCF the Board updates the previous summary datasets
 to be in current dollars but does NOT do this with the full public dataset.
-The following is ad-hoc but suffices for our purposes: from page 36 of the Report
-we adjust nominal figures in the full public dataset as follows:
+From page 36 of the Report we adjust nominal figures in the full public dataset as follows:
 
 For 2019:
     * Adjustment factor for assets and debts in survey year = 1.1592
@@ -42,15 +40,7 @@ Reminders/caveats/concerns:
     * Per-capita: divide quantities by 2 if married==1. Summary macros: married=1
     if respondent is married or living with their partner (we typically don't
     use per-capita here though).
-    * simple lifetime wealth calculations are placed here. These may or may not
-    appear in the Commentary
-    * universal cancellation effects here too? Not sure.
-    * perhaps place methods elsewhere eventually. they clutter and do not require
-    reference to data.
-
-Note that in the public dataset, the PSLF is combined with the forbearance
-category.
-
+    * In the public dataset, the PSLF is combined with the forbearance category.
 
 """
 import numpy as np
@@ -80,14 +70,17 @@ simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 """
 Questions and variables taken from the full public dataset. Recall that SCF
 only solicits loan-level info for the first six loans.
+
+Remember x42001 are weights (divided by 5 in order to be consistent with "wgt"
+in summary dataset). Also, x5702 is wage income.
 """
 
 #Q1. How much is still owed on this loan? (x7179 represents "all other loans")
 #Key: 0. NA; otherwise dollar amount
 bal_list = ['x7824', 'x7847', 'x7870', 'x7924', 'x7947', 'x7970', 'x7179']
-#Q2. Is the payment amount (on this loan) (you/he/she/he or she) owe each month determined
-#by (your/his/her/his or her) income, for example an Income-Based Repayment Plan,
-#Pay as you Earn Plan, or Income-Contingent Repayment Plan?
+#Q2. Is the payment amount (on this loan) (you/he/she/he or she) owe each month
+#determined by (your/his/her/his or her) income, for example an Income-Based
+#Repayment Plan, Pay as you Earn Plan, or Income-Contingent Repayment Plan?
 #Key: 1. *YES; 5. *NO; 0. NA
 IDR_list = ['x9306', 'x9307', 'x9308', 'x9309', 'x9310', 'x9311']
 #Q3. Is this loan a federal student loan such as Stafford, Direct, PLUS, or Perkins?
@@ -111,32 +104,13 @@ forgive_list = ['x7421', 'x7423', 'x7425', 'x7427', 'x7429', 'x7431']
 #Key. PERCENT * 100. -1. Nothing. 0. Inap.
 #interest_list = ['x7822', 'x7845', 'x7868', 'x7922', 'x7945', 'x7968']
 
-"""
-For following it does not seem meaningfu to talk about number of loans falling
-into particular category. Instead we record dollar value of all such loans.
-
-Now think: what else to depict? Ideas:
-    * value of all loans not currently in repayment.
-    * value of all loans in an IDR. Typical income/wealth of debtors in an IDR.
-    * value of all loans that respondents expect to never repay. Reasons why.
-"""
-
-"""
-Create full list of variables taken from full public dataset: x42001 are weights
-(divided by 5 in order to be consistent with "wgt" in summary dataset).
-Also, x5702 is wage income.
-"""
-
-#full_list = ['yy1','y1','x42001'] + bal_list + IDR_list + federal_list \
-#+ paynow_list + whynopay_list + forgive_list + ['x5702']
-
 full_list = ['yy1','y1','x42001'] + bal_list + IDR_list + federal_list \
 + paynow_list + whynopay_list + ['x5702']
-
 
 """
 Make folder for figures if none exists
 """
+
 if not os.path.exists('../main/figures'):
     os.makedirs('../main/figures')
 
@@ -225,6 +199,7 @@ income_adj[2022] = 1.0809
 
 debt_list = [0, 1, 1.5*10**4, 4*10**4, np.inf]
 debt_brackets = ["No debt","\$1-\$15,000", "\$15,001-\$40,000", "\$40,001+"]
+num=5
 
 """
 Sample years. Only consider the last two years.
@@ -311,8 +286,7 @@ for yr in years:
         scf_full[yr]['student_debt_full_current'] = scf_full[yr]['student_debt_full']*asset_adj[yr]
         """
         Loan-level constructions (IDR, federal vs private loans, forbearance, etc).
-
-        Remember PSLF is combined with forbearance category.
+        PSLF is combined with forbearance category in public dataset.
         """
         for i in range(6):
             scf_full[yr]['fed_bal{0}'.format(i)] = (scf_full[yr][federal_list[i]]==1)*scf_full[yr][bal_list[i]]
@@ -383,6 +357,7 @@ for yr in years:
 """
 Read in .csv files
 """
+
 print("Now importing data.")
 tic = time.time()
 for yr in years:
