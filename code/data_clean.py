@@ -229,16 +229,6 @@ scf_full, scf_full_real, scf_sum, scf = {}, {}, {}, {}
 scf_debtors, scf_private_debtors, scf_nondebtors, scf_young = {}, {}, {}, {}
 
 """
-Age distribution (Boundaries: 30-year-old is in group 0.)
-"""
-
-age_labels = ["26-30","31-35","36-40","41-45","46-50","51-55","56-60","61-65","66-70"]
-age_labels_bulletin = ["Under 35","35-44","45-54","55-64","65-74","Over 75"]
-age_values = [25,30,35,40,45,50,55,60,65,70]
-age_values_bulletin = [0,34,44,54,64,74,1000]
-young_cat = [0,1]
-
-"""
 Naming dictionary for figures. Only need ONE dictionary for whole analysis.
 """
 

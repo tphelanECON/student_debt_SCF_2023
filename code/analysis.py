@@ -35,7 +35,6 @@ scf = data_clean.scf
 scf_debtors = data_clean.scf_debtors
 scf_private_debtors = data_clean.scf_private_debtors
 scf_nondebtors = data_clean.scf_nondebtors
-age_labels = data_clean.age_labels
 quantile = data_clean.quantile
 weight_median = data_clean.weight_median
 weight_mean = data_clean.weight_mean
