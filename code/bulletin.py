@@ -1,6 +1,6 @@
 """
-As a preliminary check, this script replicates the main features of Table 1
-and Table 2 of https://www.federalreserve.gov/publications/files/scf23.pdf
+This script replicates the main features of Table 1 and Table 2 of the official
+Federal Reserve Report: https://www.federalreserve.gov/publications/files/scf23.pdf
 
 This is simply a check to ensure we are computing things correctly.
 """

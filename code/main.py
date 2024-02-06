@@ -1,5 +1,7 @@
 """
-Download data and create the figures and tables used in the Commentary.
+Author: Tom Phelan and Emily Moschini.
+
+Date written: February 2024.
 """
 
 import os

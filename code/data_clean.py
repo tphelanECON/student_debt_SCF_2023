@@ -2,19 +2,23 @@
 This script downloads the 2019 and 2022 waves of the SCF and generates variables
 used in the analysis if such files do not already exist in memory.
 
+February 2024: get rid of things that are not necessary for the Commentary.
+The Commentary makes no mention of race or other kinds of debt. So we can get
+rid of this stuff.
+
+name_dict only uses income and networth. Everything else seems superfluous.
+No per-capita quantities here either.
+
 Documentation links for most recent wave (2022 wave, released in October 2023):
 
-    * Official report (previously referred to the Bulletin): https://www.federalreserve.gov/publications/files/scf23.pdf
+    * Official report (previously referred to the Bulletin) found at:
+    https://www.federalreserve.gov/publications/files/scf23.pdf
+    Reference: Aditya Aladangady, Jesse Bricker, Andrew C. Chang, Serena Goodman,
+    Jacob Krimmel, Kevin B. Moore, Sarah Reber, Alice H. Volz, and Richard A.
+    Windle. Changes in U.S. Family Finances from 2019 to 2022: Evidence from
+    the Survey of Consumer Finances. 2023.
     * Summary macros: https://www.federalreserve.gov/econres/files/bulletin.macro.txt
     * Codebook for 2022: https://www.federalreserve.gov/econres/files/codebk2022.txt
-
-To search codebook note that analysis of education loans begins with X7801.
-In this script, the "Report" refers to the above file. The full reference is
-
-Aditya Aladangady, Jesse Bricker, Andrew C. Chang, Serena Goodman, Jacob Krim-
-mel, Kevin B. Moore, Sarah Reber, Alice H. Volz, and Richard A. Windle. Changes
-in U.S. Family Finances from 2019 to 2022: Evidence from the Survey of Consumer
-Finances. 2023.
 
 With each new wave of the SCF the Board updates the previous summary datasets
 to be in current dollars but does NOT do this with the full public dataset.
@@ -41,6 +45,19 @@ Reminders/caveats/concerns:
     if respondent is married or living with their partner (we typically don't
     use per-capita here though).
     * In the public dataset, the PSLF is combined with the forbearance category.
+    * Student debt is labelled 'edn_inst' in the summary SCF dataset.
+
+name_dict['asset'] = 'Asset'
+name_dict['debt'] = 'Total debt'
+name_dict['student_debt'] = 'Student debt'
+name_dict['edn_inst'] = 'Student debt'
+name_dict['ccbal'] = 'Credit card debt'
+name_dict['veh_inst'] = 'Auto loans'
+name_dict['age'] = 'Age'
+name_dict['edcl'] = 'Education'
+name_dict['racecl4'] = 'Race'
+name_dict['inc_networth'] = 'Income plus net worth'
+
 
 """
 import numpy as np
@@ -57,8 +74,7 @@ from numpy.linalg import inv
 import requests, zipfile
 
 """
-TP: I am not concerned with performance warnings and so I ignore the following.
-They seem to come up when we append many series to our dataframes. See e.g.
+TP: suppress performance warnings.
 
 https://stackoverflow.com/questions/15819050/pandas-dataframe-concat-vs-append
 https://stackoverflow.com/questions/68292862/performancewarning-dataframe-is-highly-fragmented-this-is-usually-the-result-o
@@ -68,11 +84,9 @@ from warnings import simplefilter
 simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 
 """
-Questions and variables taken from the full public dataset. Recall that SCF
-only solicits loan-level info for the first six loans.
-
-Remember x42001 are weights (divided by 5 in order to be consistent with "wgt"
-in summary dataset). Also, x5702 is wage income.
+Questions and variables from full public dataset. Recall SCF only solicits
+loan-level info for the first six loans. Also recall that x42001 are weights
+(divided by 5 to be consistent with "wgt" in summary dataset).
 """
 
 #Q1. How much is still owed on this loan? (x7179 represents "all other loans")
@@ -105,7 +119,7 @@ forgive_list = ['x7421', 'x7423', 'x7425', 'x7427', 'x7429', 'x7431']
 #interest_list = ['x7822', 'x7845', 'x7868', 'x7922', 'x7945', 'x7968']
 
 full_list = ['yy1','y1','x42001'] + bal_list + IDR_list + federal_list \
-+ paynow_list + whynopay_list + ['x5702']
++ paynow_list + whynopay_list
 
 """
 Make folder for figures if none exists
@@ -120,15 +134,18 @@ if not os.path.exists('../data'):
 """
 Methods: data fetching, colors for graphs, quantiles, means and aggregates.
 """
+
 def data_from_url(url):
     r = requests.get(url, stream=True)
     z = zipfile.ZipFile(BytesIO(r.content))
     z.extractall('../data/')
     return pd.read_stata('../data/{0}'.format(z.namelist()[0]))
+
 """
 Functions used in data analysis. quantile arguments: series, weights, desired percentile.
 Both for a given series and for a given dataframe.
 """
+
 def quantile(data, weights, quantile):
     if not isinstance(data, np.matrix):
         data = np.asarray(data)
@@ -185,8 +202,8 @@ Download data, list variables to keep, and join full public and summary dataset
 """
 
 """
-Dictionaries for inflation adjustment. Need separate adjustment factor for
-income and assets. Following taken from page 36 of the Report.
+Dictionaries for inflation adjustment. Taken from page 36 of Report. Need separate
+adjustment for income and assets because respondents report income from PREVIOUS YEAR in the SCF.
 """
 
 asset_adj = {}
@@ -197,64 +214,49 @@ income_adj[2019] = 1.1802
 asset_adj[2022] = 1.0000
 income_adj[2022] = 1.0809
 
-debt_list = [0, 1, 1.5*10**4, 4*10**4, np.inf]
-debt_brackets = ["No debt","\$1-\$15,000", "\$15,001-\$40,000", "\$40,001+"]
-num=5
+"""
+We are interested in quintiles. Determined by the following.
+"""
+
+num = 5
 
 """
-Sample years. Only consider the last two years.
+Define years used and dictionaries for the two datasets.
 """
-start, end = '1989-03-01', '2023-06-01'
-start_dt = datetime.datetime.strptime(start, "%Y-%m-%d")
-end_dt = datetime.datetime.strptime(end, "%Y-%m-%d")
-"""
-possible_years = [1995,1998,2001,2004,2007,2010,2013,2016,2019,2022]
-diff_years = [1995,1998,2001]
-years = [yr for yr in possible_years if (yr >= start_dt.year and yr <= end_dt.year)]
-"""
+
 years = [2019,2022]
 scf_full, scf_full_real, scf_sum, scf = {}, {}, {}, {}
 scf_debtors, scf_private_debtors, scf_nondebtors, scf_young = {}, {}, {}, {}
+
 """
 Age distribution (Boundaries: 30-year-old is in group 0.)
 """
+
 age_labels = ["26-30","31-35","36-40","41-45","46-50","51-55","56-60","61-65","66-70"]
 age_labels_bulletin = ["Under 35","35-44","45-54","55-64","65-74","Over 75"]
 age_values = [25,30,35,40,45,50,55,60,65,70]
 age_values_bulletin = [0,34,44,54,64,74,1000]
 young_cat = [0,1]
-part_dict = ['age', 'edcl', 'racecl4']
 
 """
 Naming dictionary for figures. Only need ONE dictionary for whole analysis.
 """
 
-debt_categories = ['student_debt','res_debt','ccbal','veh_inst']
 name_dict = {}
 name_dict['income'] = 'Income'
 name_dict['networth'] = 'Net worth'
-name_dict['asset'] = 'Asset'
-name_dict['debt'] = 'Total debt'
-name_dict['student_debt'] = 'Student debt'
-name_dict['edn_inst'] = 'Student debt'
-name_dict['res_debt'] = 'Residential debt'
-name_dict['ccbal'] = 'Credit card debt'
-name_dict['veh_inst'] = 'Auto loans'
-name_dict['age'] = 'Age'
-name_dict['edcl'] = 'Education'
-name_dict['racecl4'] = 'Race'
-name_dict['inc_networth'] = 'Income plus net worth'
 
 """
 Debt categories and table labels/names
 """
 
-summary_rows = ['Median income', 'Mean income', 'Median networth', 'Mean networth']
+summary_rows = ['Median income', 'Mean income', 'Median net worth', 'Mean net worth']
 summary_cols = ['Whole population', 'Debtors', 'Private Debtors']
 
 """
 Fetch data from Board's website if not on file and create variables used in analysis.
 """
+
 for yr in years:
     if os.path.exists('../data/scf{0}.csv'.format(yr)):
         print("File exists for {0} wave.".format(yr))
@@ -262,7 +264,7 @@ for yr in years:
         print("No file exists for {0} wave. Now downloading.".format(yr))
         tic = time.time()
         """
-        Get summary dataset (main source in Commentary). Label scf_sum.
+        Get summary dataset (main source used in Commentary). Label scf_sum.
         """
         url = 'https://www.federalreserve.gov/econres/files/scfp{0}s.zip'.format(yr)
         scf_sum[yr] = data_from_url(url)
@@ -270,7 +272,7 @@ for yr in years:
         toc=time.time()
         print("Data for {0} wave created. Time taken: {1} seconds.".format(yr,toc-tic))
         """
-        Get full public dataset for loan-level information.
+        Get full public dataset for loan-level information. Label scf_full.
         """
         tic = time.time()
         url = 'https://www.federalreserve.gov/econres/files/scf{0}s.zip'.format(yr)
@@ -280,13 +282,17 @@ for yr in years:
         toc = time.time()
         print("Time to download full public dataset p{0}i6:".format(str(yr)[2:]), toc-tic)
         """
-        Convert certain variables using the inflation adjustment factors.
+        Adjust for inflation. Converted variables indicated with _current suffix.
+        _full suffix indicates that quantity taken from the full dataset.
         """
         scf_full[yr]['student_debt_full'] = scf_full[yr][[bal_list[i] for i in range(7)]].sum(axis=1)
         scf_full[yr]['student_debt_full_current'] = scf_full[yr]['student_debt_full']*asset_adj[yr]
         """
-        Loan-level constructions (IDR, federal vs private loans, forbearance, etc).
-        PSLF is combined with forbearance category in public dataset.
+        Loan-level constructions:
+            * Federal versus private.
+            * Amount of debt not in repayment.
+            * Amount not in repayment broken down by reason for no payment.
+        Note: PSLF combined with forbearance category in public dataset.
         """
         for i in range(6):
             scf_full[yr]['fed_bal{0}'.format(i)] = (scf_full[yr][federal_list[i]]==1)*scf_full[yr][bal_list[i]]
@@ -310,11 +316,6 @@ for yr in years:
         scf_full[yr]['student_debt_fed_current'] = scf_full[yr]['student_debt_fed']*asset_adj[yr]
         scf_full[yr]['student_debt_private_current'] = scf_full[yr]['student_debt_private']*asset_adj[yr]
         scf_full[yr]['student_debt_LL_current'] = scf_full[yr]['student_debt_fed_current'] + scf_full[yr]['student_debt_private_current']
-        #now want dollar value of loans in repayment.
-        for i in range(6):
-            scf_full[yr]['IDR_ind{0}'.format(i)] = (scf_full[yr][IDR_list[i]]==1).astype(int)
-        scf_full[yr]['IDR_count'] = scf_full[yr][['IDR_ind{0}'.format(i) for i in range(6)]].sum(axis=1)
-        scf_full[yr]['IDR'] = scf_full[yr]['IDR_count']>0
         """
         Now merge
         """
@@ -323,29 +324,14 @@ for yr in years:
         scf_sum[yr].set_index(['yy1','y1'],inplace=True)
         scf[yr] = scf_full[yr].join(scf_sum[yr], how='inner')
         """
-        Additional variables: dummy, debts, age categorial var., per-capita variables.
-
-        NOTE: not clear that we use all of these. Consider deleting before publication.
+        Quintiles and deciles
         """
-        scf[yr]['unit'] = 1
         scf[yr]['student_debt'] = scf[yr]['edn_inst']
-        scf[yr]['res_debt'] = scf[yr]['nh_mort'] + scf[yr]['heloc'] + scf[yr]['resdbt']
-        scf[yr]['nonres_debt'] = scf[yr]['debt'] - scf[yr]['res_debt']
-        scf[yr]['nonres_nonSL_debt'] = scf[yr]['nonres_debt'] - scf[yr]['student_debt']
-        scf[yr]['age_cat'] = pd.cut(scf[yr]['age'],bins=age_values,labels=range(len(age_values)-1))
-        scf[yr]['age_cat_bulletin'] = pd.cut(scf[yr]['age'],bins=age_values_bulletin,labels=range(len(age_values_bulletin)-1))
-        scf[yr]['inc_networth'] = scf[yr]['income'] + scf[yr]['networth']
-        for debt in debt_categories:
-            scf[yr]['has_{0}'.format(debt)] = scf[yr][debt]>0
-        for var in ['student_debt','wageinc','income','asset','networth']:
-            scf[yr]['percap_' + var] = (1 - (scf[yr]['married']==1)/2)*scf[yr][var]
         for var in ["income", "networth"]:
             for num in [10,5]:
                 #be sure to set include_lowest==True so that var+'_cat{0}' includes those with no income
                 qctiles = np.array([quantile(scf[yr][var], scf[yr]['wgt'], j/num) for j in range(num+1)])
                 scf[yr][var+'_cat{0}'.format(num)] = pd.cut(scf[yr][var], bins=qctiles, labels=range(len(qctiles)-1), include_lowest=True)
-                qctiles = np.array([quantile(scf[yr]['percap_'+var], scf[yr]['wgt'], j/num) for j in range(num+1)])
-                scf[yr]['percap_'+var+'_cat{0}'.format(num)] = pd.cut(scf[yr]['percap_'+var], bins=qctiles, labels=range(len(qctiles)-1), include_lowest=True)
         """
         Save and delete unnecessary files
         """
@@ -358,71 +344,44 @@ for yr in years:
 Read in .csv files
 """
 
-print("Now importing data.")
-tic = time.time()
 for yr in years:
-    print("{0} wave".format(yr))
     scf[yr] = pd.read_csv('../data/scf{0}.csv'.format(yr))
     scf_debtors[yr] = scf[yr][scf[yr]['student_debt']>0]
     scf_private_debtors[yr] = scf[yr][scf[yr]['student_debt_private_current']>0]
     scf_nondebtors[yr] = scf[yr][scf[yr]['student_debt']<=0]
-    scf_young[yr] = scf[yr][scf[yr]['age_cat'].isin(young_cat)]
-toc = time.time()
-print("Time taken:", toc-tic)
 
 """
-Check that we have the correct inflation adjustment
+A few checks on the above construction
 """
 
+"""
+Inflation adjustment
+"""
+
+print("Mean student debt in summary and full dataset:")
 for yr in [2019,2022]:
     print("Year:", yr)
-    print("Mean student debt in summary and full dataset:")
     print(weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
     print(weight_mean(scf[yr]['student_debt_full_current'],scf[yr]['x42001']/5))
 
 """
-Compute number of people in IDR
+Quintiles calculations
 """
 
-for yr in [2019,2022]:
-    print("Year = {0}".format(yr))
-    print("Fraction of student debtors enrolled in an IDR:")
-    print(weight_mean(scf_debtors[yr]['IDR'],scf_debtors[yr]['x42001']/5))
-    print("Fraction of student debt that is federal:")
-    tot_SD = weight_agg(scf[yr]['student_debt_full_current'],scf[yr]['x42001']/5)
-    tot_SD2 = weight_agg(scf[yr]['student_debt'],scf[yr]['wgt'])
-    fed_SD = weight_agg(scf[yr]['student_debt_fed_current'],scf[yr]['x42001']/5)
-    print(fed_SD/tot_SD)
+for var in ['income','networth']:
+    print('Counts in {0} quintiles'.format(var))
+    for yr in [2019,2022]:
+        print("Year:", yr)
+        print(scf[yr].groupby(var+'_cat'+str(num))['wgt'].sum())
 
 """
-Some statistics on quantitative significance of "all other loans."
-TP: I check this because we cannot ascertain loan-level information for these
-loans. Thankfully, they are very small in the aggregate.
+Quantitative significance of "all other loans." We cannot ascertain loan-level
+info for these loans. However, they are very small in the aggregate.
 """
 
-print("Average amount of loans beyond first six:")
+print("Percentage of student debt not among first six:")
 for yr in [2019,2022]:
     print("Year = {0}:".format(yr))
-    print(weight_mean(scf[yr]['x7179'],scf[yr]['wgt']))
-    print("Average loans")
-    print(weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
-
-print("Now among borrowers:")
-for yr in [2019,2022]:
-    print("Year = {0}:".format(yr))
-    print(weight_mean(scf_debtors[yr]['x7179'],scf_debtors[yr]['wgt']))
-    print("Average loans")
-    print(weight_mean(scf_debtors[yr]['student_debt'],scf_debtors[yr]['wgt']))
-
-"""
-Averages check
-"""
-
-print("Average debt loan-level versus total:")
-for yr in [2019,2022]:
-    scf[yr]['student_debt_LL_check'] = scf[yr]['student_debt_LL_current'] + scf[yr]['x7179']
-    print("Year = {0}:".format(yr))
-    print("Loan-level:",weight_mean(scf[yr]['student_debt_LL_current'],scf[yr]['wgt']))
-    print("Loan-level plus misc:",weight_mean(scf[yr]['student_debt_LL_check'],scf[yr]['wgt']))
-    print("Full dataset:",weight_mean(scf[yr]['student_debt_full_current'],scf[yr]['wgt']))
-    print("Summary dataset:",weight_mean(scf[yr]['student_debt'],scf[yr]['wgt']))
+    other_SD = weight_agg(scf[yr]['x7179'],scf[yr]['wgt'])
+    tot_SD = weight_agg(scf[yr]['student_debt'],scf[yr]['wgt'])
+    print("Ratio:", 100*other_SD/tot_SD)

@@ -1,5 +1,7 @@
 """
-This script does the following:
+This script performs the analysis. Data is constructed in data_clean.py.
+
+Contains the following:
     * Print summary statistics and make tables.
     * Average student debt by quintiles, broken down by:
         * wave of SCF (2019 or 2022).
@@ -8,9 +10,8 @@ This script does the following:
         * public vs private loans, fraction not in repayment, reason for lack
         of repayment.
     * Incidence of debt by quintiles of income and net worth.
-    * Measure of inequality. For income and net worth we record ratio of conditional
-    mean to median student debt. We only do this for total student debt because
-    median PRIVATE student debt among borrowers is often zero.
+    * Ratio of conditional mean to median student debt. Only for total student
+    debt because median PRIVATE student debt among borrowers often zero.
 """
 import numpy as np
 import pandas as pd
@@ -47,28 +48,23 @@ years = data_clean.years
 c1,c2 = data_clean.c1, data_clean.c2
 colorFader = data_clean.colorFader
 
-debt_categories = data_clean.debt_categories
 name_dict = data_clean.name_dict
 summary_rows = data_clean.summary_rows
 summary_cols = data_clean.summary_cols
 
-debt_list = data_clean.debt_list
-debt_brackets = data_clean.debt_brackets
 num = data_clean.num
 
 """
-Print the statistics mentioned in the introduction.
+Statistics mentioned in introduction and first part of the analysis.
 """
 
 for yr in [2019,2022]:
-    print("For year = {0}:".format(yr))
-    print("Median student debt:")
-    print("Whole population:", weight_median_df(scf[yr],'edn_inst'))
-    print("Among borrowers:", weight_median_df(scf_debtors[yr],'edn_inst'))
+    print("Year = {0}:".format(yr))
+    print("Median student debt among borrowers:", weight_median_df(scf_debtors[yr],'edn_inst'))
     print("Mean student debt:")
     print("Whole population:", weight_mean_df(scf[yr],'edn_inst'))
     print("Among borrowers:", weight_mean_df(scf_debtors[yr],'edn_inst'))
-    print("Indicence of student debt:", weight_agg_df(scf_debtors[yr],'wgt')/weight_agg_df(scf[yr],'wgt'))
+    print("Incidence of student debt:", weight_agg_df(scf_debtors[yr],'wgt')/weight_agg_df(scf[yr],'wgt'))
     print("Aggregate student debt/aggregate income:", weight_agg_df(scf[yr],'edn_inst')/weight_agg_df(scf[yr],'income'))
 
 """
@@ -83,13 +79,10 @@ for yr in [2019,2022]:
         df.iloc[1,i] = weight_mean_df(d,'income')/10**3
         df.iloc[2,i] = weight_median_df(d,'networth')/10**3
         df.iloc[3,i] = weight_mean_df(d,'networth')/10**3
-        #df.iloc[4,i] = np.round(weight_median_df(d,'age'),1)
-        #df.iloc[5,i] = np.round(weight_mean_df(d,'age'),1)
 
     destin = '../main/figures/sd_summary_{0}.tex'.format(yr)
     df_table = df.round(decimals=1)
     with open(destin,'w') as tf:
-        #tf.write(df.to_latex(escape=False,column_format='lcccc'))
         df_table=df_table.style.format(precision=1)
         tf.write(df_table.to_latex(column_format='lccc'))
 
@@ -258,10 +251,8 @@ for debt_var in debt_var_list:
 print("2019 vs 2022 incidence figures done")
 
 """
-Measure of inequality: ratio of conditional mean to median student debt. Only
-for total student debt because median PRIVATE student debt among borrowers often zero.
-
-This is AMONG student debtors.
+Ratio of conditional mean to median student debt. Only for total student debt
+because median PRIVATE student debt among borrowers often zero.
 """
 
 for debt_var in ['student_debt']:
@@ -356,7 +347,6 @@ for yr in [2019,2022]:
     destin = '../main/figures/sd_LL_{0}.tex'.format(yr)
     df_table = df.round(decimals=3)
     with open(destin,'w') as tf:
-        #tf.write(df.to_latex(escape=False,column_format='lcccc'))
         df_table_s=df_table.style.format(precision=3)
         tf.write(df_table_s.to_latex(column_format='lcccc'))
 
