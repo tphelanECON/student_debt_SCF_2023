@@ -46,19 +46,6 @@ Reminders/caveats/concerns:
     use per-capita here though).
     * In the public dataset, the PSLF is combined with the forbearance category.
     * Student debt is labelled 'edn_inst' in the summary SCF dataset.
-
-name_dict['asset'] = 'Asset'
-name_dict['debt'] = 'Total debt'
-name_dict['student_debt'] = 'Student debt'
-name_dict['edn_inst'] = 'Student debt'
-name_dict['ccbal'] = 'Credit card debt'
-name_dict['veh_inst'] = 'Auto loans'
-name_dict['age'] = 'Age'
-name_dict['edcl'] = 'Education'
-name_dict['racecl4'] = 'Race'
-name_dict['inc_networth'] = 'Income plus net worth'
-
-
 """
 import numpy as np
 import pandas as pd
@@ -92,11 +79,6 @@ loan-level info for the first six loans. Also recall that x42001 are weights
 #Q1. How much is still owed on this loan? (x7179 represents "all other loans")
 #Key: 0. NA; otherwise dollar amount
 bal_list = ['x7824', 'x7847', 'x7870', 'x7924', 'x7947', 'x7970', 'x7179']
-#Q2. Is the payment amount (on this loan) (you/he/she/he or she) owe each month
-#determined by (your/his/her/his or her) income, for example an Income-Based
-#Repayment Plan, Pay as you Earn Plan, or Income-Contingent Repayment Plan?
-#Key: 1. *YES; 5. *NO; 0. NA
-IDR_list = ['x9306', 'x9307', 'x9308', 'x9309', 'x9310', 'x9311']
 #Q3. Is this loan a federal student loan such as Stafford, Direct, PLUS, or Perkins?
 #Key: 1. *YES; 5. *NO; 0. NA
 federal_list = ['x7879', 'x7884', 'x7889', 'x7894', 'x7899', 'x7994']
@@ -111,15 +93,8 @@ paynow_list = ['x7806', 'x7829', 'x7852', 'x7906', 'x7929', 'x7952']
 #3. UNABLE TO AFFORD LOAN PAYMENT; 4. POST-GRADUATION GRACE PERIOD OR STILL
 #ENROLLED -7. OTHER 0. Inap.
 whynopay_list = ['x9300', 'x9301', 'x9302', 'x9303', 'x9304', 'x9305']
-#Q6. Is the amount owed on this loan being completely forgiven or partially forgiven?
-#Key: 1. *COMPLETELY FORGIVEN; 2. *PARTIALLY FORGIVEN; -7  OTHER; 0. Inap.
-forgive_list = ['x7421', 'x7423', 'x7425', 'x7427', 'x7429', 'x7431']
-#Q7. What is the annual rate of interest charged on this loan?
-#Key. PERCENT * 100. -1. Nothing. 0. Inap.
-#interest_list = ['x7822', 'x7845', 'x7868', 'x7922', 'x7945', 'x7968']
 
-full_list = ['yy1','y1','x42001'] + bal_list + IDR_list + federal_list \
-+ paynow_list + whynopay_list
+full_list = ['yy1','y1','x42001'] + bal_list + federal_list + paynow_list + whynopay_list
 
 """
 Make folder for figures if none exists
@@ -375,3 +350,11 @@ for yr in [2019,2022]:
     other_SD = weight_agg(scf[yr]['x7179'],scf[yr]['wgt'])
     tot_SD = weight_agg(scf[yr]['student_debt'],scf[yr]['wgt'])
     print("Ratio:", 100*other_SD/tot_SD)
+
+"""
+Ages (quoted in the main text in section 2.1)
+"""
+for yr in [2019,2022]:
+    print("Mean ages for year = {0}:".format(yr))
+    print("Whole population:", weight_median(scf[yr]['age'],scf[yr]['wgt']))
+    print("Student debtors:", weight_median(scf_debtors[yr]['age'],scf_debtors[yr]['wgt']))

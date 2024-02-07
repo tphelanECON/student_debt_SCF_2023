@@ -1,5 +1,5 @@
 """
-Author: Tom Phelan and Emily Moschini.
+Authors: Tom Phelan and Emily Moschini.
 
 Date written: February 2024.
 """
