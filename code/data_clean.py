@@ -1,21 +1,18 @@
 """
-This script downloads the 2019 and 2022 waves of the SCF and generates variables
-used in the Commentary if such files do not already exist in memory.
+Data cleaning for "The Evolution of Student Debt 2019–2022: Evidence from the Survey of Consumer Finances."
 
-It also prints some figures used in the main text.
+    Authors: Emily G. Moschini and Tom Phelan.
+    Date written: April 2024.
+    Email: tom.phelan@clev.frb.org.
 
-Authors: Tom Phelan and Emily Moschini.
-Date written: April 2024.
+This script downloads the 2019 and 2022 waves of the SCF and generates variables used in the Commentary.
+It also prints some numbers quoted in the main text.
 """
-
 
 import numpy as np
 import pandas as pd
-# import matplotlib as mpl
 import os
 from io import BytesIO
-# from zipfile import ZipFile
-# from urllib.request import urlopen
 import requests
 import zipfile
 
@@ -33,29 +30,27 @@ if not os.path.exists('../data'):
 Methods: data fetching, colors for graphs, quantiles, means and aggregates.
 """
 
-
 def data_from_url(url_var):
     r = requests.get(url_var, stream=True)
     z = zipfile.ZipFile(BytesIO(r.content))
     z.extractall('../data/')
     return pd.read_stata('../data/{0}'.format(z.namelist()[0]))
 
-
 """
 Functions used in data analysis. quantile arguments: series, weights, desired percentile.
 Both for a given series and for a given dataframe.
 """
 
-
+# following interpolates step-function for cdf
 def quantile(data, weights, qct):
     if not isinstance(data, np.matrix):
         data = np.asarray(data)
     if not isinstance(weights, np.matrix):
         weights = np.asarray(weights)
-    ind_sorted = np.argsort(data)
-    sorted_weights = weights[ind_sorted]
+    ind_sorted = np.argsort(data)  # gives indices of the sorted array.
+    sorted_weights = weights[ind_sorted] # weights associated with sorted observations
     sn = np.cumsum(sorted_weights)
-    pn = sn/sn[-1]  # : Pn = (sn-0.5*sorted_weights)/sn[-1]
+    pn = sn/sn[-1]
     return np.interp(qct, pn, data[ind_sorted])
 
 
@@ -124,9 +119,12 @@ for yr in years:
         scf[yr].columns = scf[yr].columns.str.lower()
         print("Summary data for {0} wave created.".format(yr))
         """
-        Quintiles. Note that quintiles are always defined using the whole population. 
+        Define indicator for education debt
         """
-        scf[yr]['SD'] = scf[yr]['edn_inst']
+        scf[yr]['SD_ind'] = scf[yr]['edn_inst'] > 0
+        """
+        Quintiles. Always defined using the WHOLE population. 
+        """
         for var in ["income", "networth"]:
             # be sure to set include_lowest==True so that var+'_cat{0}' includes those with no income
             qctiles = np.array([quantile(scf[yr][var], scf[yr]['wgt'], j/5) for j in range(6)])
@@ -139,53 +137,48 @@ for yr in years:
         os.remove('../data/rscfp{0}.dta'.format(yr))
 
 """
-Read in .csv files
+Read in .csv files and define the dataframes used in analysis
 """
 
 for yr in years:
     scf[yr] = pd.read_csv('../data/scf{0}.csv'.format(yr))
-    scf_debtors[yr] = scf[yr][scf[yr]['SD'] > 0]
+    scf_debtors[yr] = scf[yr][scf[yr]['edn_inst'] > 0]
     scf_young[yr] = scf[yr][scf[yr]['age'] < 35]
-    scf_young_debtors[yr] = scf_young[yr][scf_young[yr]['SD'] > 0]
+    scf_young_debtors[yr] = scf_young[yr][scf_young[yr]['edn_inst'] > 0]
 
 """
 Some summary statistics not given in a table or figure
 """
 
 """
-Statistics mentioned in introduction and first part of the analysis.
-"""
-
-"""
 Means and median quoted in introduction
 """
 
+print("Median and mean student debt")
 for yr in [2019, 2022]:
     print("Year = {0}:".format(yr))
-    print("Median student debt among student debtors:", round(weight_median_df(scf_debtors[yr], 'SD')/10**3, 2), "thousands")
-    print("Mean student debt (whole population):", round(weight_mean_df(scf[yr], 'SD')/10**3, 2), "thousands")
-    print("Mean student debt (student debtors):", round(weight_mean_df(scf_debtors[yr], 'SD')/10**3, 2), "thousands")
+    print("Median student debt AMONG student debtors:", round(weight_median_df(scf_debtors[yr], 'edn_inst')/10**3, 2), "thousands")
+    #print("Mean student debt (whole population):", round(weight_mean_df(scf[yr], 'edn_inst')/10**3, 2), "thousands")
+    print("Mean student debt AMONG student debtors:", round(weight_mean_df(scf_debtors[yr], 'edn_inst')/10**3, 2), "thousands")
 
 """
 Incidence, aggregates, and ages (quoted in the main text in section 2.1)
 """
 
 print("Incidence and aggregates")
-
 for yr in [2019, 2022]:
     print("Year = {0}:".format(yr))
-    print("Incidence (percentange) in whole population:",
-          round(100*weight_agg_df(scf_debtors[yr], 'wgt')/weight_agg_df(scf[yr], 'wgt'), 2))
-    print("Aggregate student debt in SCF:", round(weight_agg_df(scf[yr], 'SD')/10**12, 2), "trillion")
-    print("As percent of agg income:", round(100*weight_agg_df(scf[yr], 'SD')/weight_agg_df(scf[yr], 'income'), 2))
-    print("As percent of agg net worth:", round(100*weight_agg_df(scf[yr], 'SD')/weight_agg_df(scf[yr], 'networth'), 2))
+    print("Incidence (percentage) in whole population:",
+          round(100*np.sum(scf[yr]['SD_ind']*scf[yr]['wgt'])/np.sum(scf[yr]['wgt']), 1))
+    print("Agg student debt in SCF:", round(weight_agg_df(scf[yr], 'edn_inst')/10**12, 2), "trillion")
+    print("As percent of agg income:", round(100*weight_agg_df(scf[yr], 'edn_inst')/weight_agg_df(scf[yr], 'income'), 2))
+    print("As percent of agg net worth:", round(100*weight_agg_df(scf[yr], 'edn_inst')/weight_agg_df(scf[yr], 'networth'), 2))
 
 """
 Ages (quoted in the main text in section 2.1)
 """
 
 print("Ages")
-
 for yr in [2019, 2022]:
     print("Median ages for year = {0}:".format(yr))
     print("Whole population:", weight_median(scf[yr]['age'], scf[yr]['wgt']))

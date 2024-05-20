@@ -45,7 +45,7 @@ weight_median_df = data_clean.weight_median_df
 weight_mean_df = data_clean.weight_mean_df
 weight_agg_df = data_clean.weight_agg_df
 
-# Plots
+# Plot colors and plotting function
 c1 = 'crimson'
 c2 = 'darkblue'
 
@@ -87,15 +87,14 @@ for yr in [2019, 2022]:
             tf.write(df_table.to_latex(column_format='lccc'))
 
 """
-Average (mean) student debt by quintiles. Indexed by:
+Average student debt by quintiles. Four figures indexed by:
     * choice of quintile (income or networth) 
     * population (whole population or population of student debtors)
-    
-Therefore 2 x 2 = 4 figures.
 """
 
 for var in ['income', 'networth']:
     for pop_var in ['student debtors', 'all']:
+        # one dataframe of quintiles for each year and population
         SD_quintiles = pd.DataFrame(columns=range(1, 6), index=[2019, 2022])
         for yr in [2019, 2022]:
             if pop_var == 'student debtors':
@@ -103,8 +102,9 @@ for var in ['income', 'networth']:
             else:
                 df_temp = scf[yr]
             f = lambda x: np.average(x, weights=df_temp.loc[x.index, "wgt"])
-            SD_quintiles.loc[yr, :] = df_temp.groupby(var + '_cat5')['SD'].agg(f).values
-        SD_quintiles = (SD_quintiles / 1000).astype(float).round(1)
+            SD_quintiles.loc[yr, :] = df_temp.groupby(var + '_cat5')['edn_inst'].agg(f).values
+        # record in thousands
+        SD_quintiles = (SD_quintiles / 10 ** 3).astype(float).round(1)
         fig = plt.figure()
         ax = fig.add_subplot(111)
         for i in range(5):
@@ -123,14 +123,14 @@ for var in ['income', 'networth']:
             ax.set_title('Average student debt', fontsize=titlefontsize)
         else:
             ax.set_title('Average student debt among student debtors', fontsize=titlefontsize)
-        destin = '../main/figures/{0}_ave_{1}.png'.format(var[:3], pop_var[:3])
-        plt.savefig(destin, format='png', dpi=1000)
+        destin = '../main/figures/{0}_ave_{1}.eps'.format(var[:3], pop_var[:3])
+        plt.savefig(destin, format='eps', dpi=1000)
         if show == 1:
             plt.show()
         plt.close()
 
 """
-Percentage of families with student debt by quintiles of income and net worth.
+Incidence: percentage of families with student debt by quintiles of income and net worth.
 """
 
 for var in ['income', 'networth']:
@@ -138,11 +138,12 @@ for var in ['income', 'networth']:
     for yr in [2019, 2022]:
         data = scf[yr]
         quintiles = np.array([quantile(data[var], data['wgt'], j / 5) for j in range(6)])
-        qct_lists, var_names = [quintiles, [0, 1, np.inf]], [var, 'SD']
+        qct_lists, var_names = [quintiles, [0, 1, np.inf]], [var, 'edn_inst']
         d = [pd.cut(data[var_names[i]], bins=qct_lists[i], labels=range(len(qct_lists[i]) - 1),
                     include_lowest=True, duplicates='drop') for i in range(2)]
+        # create series of pairs of quintiles and whether family has student debt
         data['pairs'] = list(zip(d[0], d[1]))
-        SD_debt = data.groupby(data['pairs'])['SD']
+        # count families in each pair category, using SCF weights
         SD_debt_count = data.groupby(data['pairs'])['wgt'].sum()
         SD_quintiles_frac.loc[yr, :] = [SD_debt_count[(i, 1)] / (SD_debt_count[(i, 0)] + SD_debt_count[(i, 1)]) for i in
                                         range(5)]
@@ -161,8 +162,8 @@ for var in ['income', 'networth']:
     ax.set_ylabel('Percent', fontsize=ylabelfontsize)
     ax.set_title('Percentage of families with student debt', fontsize=titlefontsize)
     ax.set_ylim([0, 50])
-    destin = '../main/figures/{0}_pct.png'.format(var[:3])
-    plt.savefig(destin, format='png', dpi=1000)
+    destin = '../main/figures/{0}_pct.eps'.format(var[:3])
+    plt.savefig(destin, format='eps', dpi=1000)
     if show == 1:
         plt.show()
     plt.close()
@@ -177,8 +178,8 @@ for var in ['income', 'networth']:
         data = scf_debtors[yr]
         f = lambda x: np.average(x, weights=data.loc[x.index, "wgt"])
         g = lambda x: weight_median(x, weights=data.loc[x.index, "wgt"])
-        gb = data.groupby(var + '_cat{0}'.format(5))['SD'].agg(f).values
-        gb_med = data.groupby(var + '_cat{0}'.format(5))['SD'].agg(g).values
+        gb = data.groupby(var + '_cat{0}'.format(5))['edn_inst'].agg(f).values
+        gb_med = data.groupby(var + '_cat{0}'.format(5))['edn_inst'].agg(g).values
         SD_quintiles_rat.loc[yr, :] = gb / gb_med
 
     fig = plt.figure()
@@ -195,8 +196,8 @@ for var in ['income', 'networth']:
     ax.set_ylabel('Ratio', fontsize=ylabelfontsize)
     ax.set_ylim([0, 2.2])
     ax.set_title('Ratio of mean-to-median student debt', fontsize=titlefontsize)
-    destin = '../main/figures/{0}_MM.png'.format(var[:3])
-    plt.savefig(destin, format='png', dpi=1000)
+    destin = '../main/figures/{0}_MM.eps'.format(var[:3])
+    plt.savefig(destin, format='eps', dpi=1000)
     if show == 1:
         plt.show()
     plt.close()
