@@ -1,3 +1,5 @@
-Replication files for Commentary.
+Replication files for "The Evolution of Student Debt 2019–2022: Evidence from the Survey of Consumer Finances."
 
-To replicate the figures, simply run analysis.py in the code folder, which automatically runs data_clean.py. 
+Authors: Emily G. Moschini and Thomas Phelan. 
+
+If you have any questions please email the second author at tom.phelan@clev.frb.org. 
