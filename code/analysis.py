@@ -2,7 +2,7 @@
 This script performs the analysis for the Commentary, using the data constructed in data_clean.py.
 
 Tables:
-    * Summary tables giving median and means income and net worth for student debtors, the whole population,
+    * Summary tables giving median and mean income and net worth for student debtors, the whole population,
     and families in which the respondent is under the age of 35.
 
 Figures:
@@ -88,7 +88,7 @@ for yr in [2019, 2022]:
 
 """
 Average student debt by quintiles. Four figures indexed by:
-    * choice of quintile (income or networth) 
+    * choice of variable for quintiles (income or networth) 
     * population (whole population or population of student debtors)
 """
 

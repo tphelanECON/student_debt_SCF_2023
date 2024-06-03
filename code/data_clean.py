@@ -6,7 +6,8 @@ Data cleaning for "The Evolution of Student Debt 2019–2022: Evidence from the 
     Email: tom.phelan@clev.frb.org.
 
 This script downloads the 2019 and 2022 waves of the SCF and generates variables used in the Commentary.
-It also prints some numbers quoted in the main text.
+
+It also prints some numbers quoted in the main text that do not appear in any figure.
 """
 
 import numpy as np
@@ -90,11 +91,6 @@ def weight_median_df(df, var):
     return quantile(df[var], df['wgt'], 0.5)
 
 
-# following is just defined because pd.cut is so long:
-def cut(df, var, qctiles):
-    return pd.cut(df[var], bins=qctiles, labels=range(len(qctiles)-1), include_lowest=True, duplicates='drop')
-
-
 """
 Download data and define dictionary used.  
 """
@@ -158,7 +154,6 @@ print("Median and mean student debt")
 for yr in [2019, 2022]:
     print("Year = {0}:".format(yr))
     print("Median student debt AMONG student debtors:", round(weight_median_df(scf_debtors[yr], 'edn_inst')/10**3, 2), "thousands")
-    #print("Mean student debt (whole population):", round(weight_mean_df(scf[yr], 'edn_inst')/10**3, 2), "thousands")
     print("Mean student debt AMONG student debtors:", round(weight_mean_df(scf_debtors[yr], 'edn_inst')/10**3, 2), "thousands")
 
 """
